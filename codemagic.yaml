@@ -9,12 +9,14 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
+          echo "=== Installing Flutter dependencies ==="
           flutter pub get
           cd ios
           pod install
           cd ..
       - name: Build iOS unsigned .ipa
         script: |
+          echo "=== Building unsigned .ipa ==="
           flutter build ipa --release --no-codesign
       - name: Debug: list ipa folder
         script: |
