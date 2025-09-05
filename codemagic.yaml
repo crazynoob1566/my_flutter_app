@@ -1,6 +1,6 @@
 workflows:
   ios_unsigned:
-    name: iOS unsigned build (debug artifacts)
+    name: iOS unsigned build (export ipa)
     max_build_duration: 60
     environment:
       flutter: stable
@@ -9,20 +9,22 @@ workflows:
     scripts:
       - name: Install dependencies
         script: |
-          echo "=== Installing Flutter dependencies ==="
           flutter pub get
           cd ios
           pod install
           cd ..
-      - name: Build iOS unsigned .ipa
+      - name: Build Xcode archive
         script: |
-          echo "=== Building unsigned .ipa ==="
-          flutter build ipa --release --no-codesign
+          flutter build ios --release --no-codesign
+      - name: Export .ipa from archive
+        script: |
+          mkdir -p build/ios/ipa
+          xcodebuild -exportArchive \
+            -archivePath build/ios/archive/Runner.xcarchive \
+            -exportPath build/ios/ipa \
+            -exportOptionsPlist ios/ExportOptions.plist
       - name: "Debug: list ipa folder"
         script: |
-          echo "=== Listing build/ios/ipa ==="
           ls -l build/ios/ipa || echo "No ipa folder found"
-          echo "=== Listing build/ios ==="
-          ls -l build/ios
     artifacts:
       - build/ios/ipa/*.ipa
