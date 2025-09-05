@@ -79,7 +79,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
         result = '';
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const PhotoSafeScreen()),
+          MaterialPageRoute(builder: (_) => PhotoSafeScreen()),
         );
       }
     });
