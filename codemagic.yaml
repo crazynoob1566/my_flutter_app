@@ -7,6 +7,15 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Package .ipa
+        script: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r Runner.ipa Payload
+      - name: Build iOS app
+        script: |
+          flutter build ios --release --no-codesign
       - name: Install dependencies
         script: |
           flutter pub get
