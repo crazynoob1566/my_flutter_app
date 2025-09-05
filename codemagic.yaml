@@ -18,7 +18,7 @@ workflows:
         script: |
           echo "=== Building unsigned .ipa ==="
           flutter build ipa --release --no-codesign
-      - name: Debug: list ipa folder
+      - name: "Debug: list ipa folder"
         script: |
           echo "=== Listing build/ios/ipa ==="
           ls -l build/ios/ipa || echo "No ipa folder found"
