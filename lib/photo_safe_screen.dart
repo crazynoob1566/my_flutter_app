@@ -203,8 +203,8 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
       floatingActionButton: !_selectionMode
           ? FloatingActionButton(
               backgroundColor: Colors.white.withValues(alpha: 0.85),
-              child: const Icon(Icons.add, color: Colors.black),
               onPressed: _addPhoto,
+              child: const Icon(Icons.add, color: Colors.black),
             )
           : null,
     );
