@@ -14,6 +14,7 @@ class PhotoSafeScreen extends StatefulWidget {
 }
 
 class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
+  final GlobalKey<AnimatedGridState> _gridKey = GlobalKey<AnimatedGridState>();
   List<File> _photos = [];
 
   @override
@@ -47,6 +48,10 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
 
       setState(() {
         _photos.add(newImage);
+        _gridKey.currentState?.insertItem(
+          _photos.length - 1,
+          duration: const Duration(milliseconds: 300),
+        );
       });
     }
   }
@@ -62,9 +67,13 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
     paths.removeAt(index);
     await prefs.setStringList('photos', paths);
 
-    setState(() {
-      _photos.removeAt(index);
-    });
+    final removedPhoto = _photos.removeAt(index);
+    _gridKey.currentState?.removeItem(
+      index,
+      (context, animation) =>
+          _buildAnimatedItem(removedPhoto, index, animation),
+      duration: const Duration(milliseconds: 300),
+    );
   }
 
   void _openGallery(int initialIndex) async {
@@ -80,31 +89,63 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
     }
   }
 
+  Widget _buildAnimatedItem(
+    File photo,
+    int index,
+    Animation<double> animation,
+  ) {
+    return ScaleTransition(
+      scale: animation,
+      child: FadeTransition(
+        opacity: animation,
+        child: GestureDetector(
+          onTap: () => _openGallery(index),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Hero(
+              tag: 'photo_$index',
+              child: Image.file(photo, fit: BoxFit.cover),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Фото‑сейф')),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(8),
+      backgroundColor: const Color(0xFF121212),
+      appBar: AppBar(
+        backgroundColor: Colors.black.withValues(alpha: 0.3),
+        elevation: 0,
+        title: const Text(
+          'Фото‑сейф',
+          style: TextStyle(fontWeight: FontWeight.w300, fontSize: 20),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: AnimatedGrid(
+        key: _gridKey,
+        initialItemCount: _photos.length,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
           crossAxisSpacing: 4,
           mainAxisSpacing: 4,
         ),
-        itemCount: _photos.length,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () => _openGallery(index),
-            child: Hero(
-              tag: 'photo_$index',
-              child: Image.file(_photos[index], fit: BoxFit.cover),
-            ),
-          );
+        itemBuilder: (context, index, animation) {
+          return _buildAnimatedItem(_photos[index], index, animation);
         },
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: Colors.white.withValues(alpha: 0.85),
+        child: const Icon(Icons.add, color: Colors.black),
         onPressed: _addPhoto,
-        child: const Icon(Icons.add),
       ),
     );
   }
@@ -158,7 +199,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black.withOpacity(opacity),
+      backgroundColor: Colors.black.withValues(alpha: opacity),
       body: GestureDetector(
         onTap: () => setState(() => showUI = !showUI),
         onVerticalDragUpdate: _onVerticalDragUpdate,
@@ -192,11 +233,15 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 left: 0,
                 right: 0,
                 child: AppBar(
-                  backgroundColor: Colors.black54.withOpacity(opacity),
-                  title: Text("${currentIndex + 1} / ${widget.photos.length}"),
+                  backgroundColor: Colors.black54.withValues(alpha: opacity),
+                  elevation: 0,
+                  title: Text(
+                    "${currentIndex + 1} / ${widget.photos.length}",
+                    style: const TextStyle(fontWeight: FontWeight.w300),
+                  ),
                   actions: [
                     IconButton(
-                      icon: const Icon(Icons.delete),
+                      icon: const Icon(Icons.delete_outline),
                       onPressed: () {
                         Navigator.pop(context, currentIndex);
                       },
