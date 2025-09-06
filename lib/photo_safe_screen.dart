@@ -128,17 +128,17 @@ class _GalleryScreenState extends State<GalleryScreen> {
   double opacity = 1.0;
   double scale = 1.0;
 
-  // Контроллеры для зума
-  late PhotoViewController _photoController;
-  late PhotoViewScaleStateController _scaleStateController;
+  late List<PhotoViewController> _controllers;
 
   @override
   void initState() {
     super.initState();
     currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
-    _photoController = PhotoViewController();
-    _scaleStateController = PhotoViewScaleStateController();
+    _controllers = List.generate(
+      widget.photos.length,
+      (_) => PhotoViewController(),
+    );
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details) {
@@ -161,82 +161,80 @@ class _GalleryScreenState extends State<GalleryScreen> {
     }
   }
 
-  void _onDoubleTapDown(TapDownDetails details) {
-    final position = details.localPosition;
-    final newScale = (_photoController.scale ?? 1.0) == 1.0 ? 2.0 : 1.0;
-
-    _photoController.scale = newScale;
-
-    if (newScale > 1.0) {
-      _photoController.position = Offset(
-        -(position.dx - MediaQuery.of(context).size.width / 2) * newScale,
-        -(position.dy - MediaQuery.of(context).size.height / 2) * newScale,
-      );
-    } else {
-      _photoController.position = Offset.zero;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black.withOpacity(opacity),
-      body: GestureDetector(
-        onTap: () => setState(() => showUI = !showUI),
-        onDoubleTapDown: _onDoubleTapDown,
-        onVerticalDragUpdate: _onVerticalDragUpdate,
-        onVerticalDragEnd: _onVerticalDragEnd,
-        child: Stack(
-          children: [
-            Transform.scale(
-              scale: scale,
-              child: PhotoViewGallery.builder(
-                itemCount: widget.photos.length,
-                pageController: _pageController,
-                onPageChanged: (index) {
-                  setState(() {
-                    currentIndex = index;
-                    _photoController = PhotoViewController();
-                    _scaleStateController = PhotoViewScaleStateController();
-                  });
-                },
-                builder: (context, index) {
-                  return PhotoViewGalleryPageOptions(
-                    imageProvider: FileImage(widget.photos[index]),
-                    controller: _photoController,
-                    scaleStateController: _scaleStateController,
-                    minScale: PhotoViewComputedScale.contained,
-                    maxScale: PhotoViewComputedScale.covered * 3,
-                    heroAttributes: PhotoViewHeroAttributes(
-                      tag: 'photo_$index',
-                    ),
-                  );
-                },
-                backgroundDecoration: const BoxDecoration(
-                  color: Colors.transparent,
-                ),
+      body: Stack(
+        children: [
+          Transform.scale(
+            scale: scale,
+            child: PhotoViewGallery.builder(
+              itemCount: widget.photos.length,
+              pageController: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  currentIndex = index;
+                });
+              },
+              builder: (context, index) {
+                return PhotoViewGalleryPageOptions(
+                  imageProvider: FileImage(widget.photos[index]),
+                  controller: _controllers[index],
+                  minScale: PhotoViewComputedScale.contained,
+                  maxScale: PhotoViewComputedScale.covered * 3,
+                  heroAttributes: PhotoViewHeroAttributes(tag: 'photo_$index'),
+                  onTapUp: (context, details, value) {
+                    final controller = _controllers[index];
+                    final currentScale = controller.scale ?? 1.0;
+                    final newScale = currentScale == 1.0 ? 2.0 : 1.0;
+
+                    controller.scale = newScale;
+
+                    if (newScale > 1.0) {
+                      controller.position = Offset(
+                        -(details.localPosition.dx -
+                                MediaQuery.of(context).size.width / 2) *
+                            newScale,
+                        -(details.localPosition.dy -
+                                MediaQuery.of(context).size.height / 2) *
+                            newScale,
+                      );
+                    } else {
+                      controller.position = Offset.zero;
+                    }
+                  },
+                );
+              },
+              backgroundDecoration: const BoxDecoration(
+                color: Colors.transparent,
               ),
             ),
-            if (showUI)
-              Positioned(
-                top: MediaQuery.of(context).padding.top,
-                left: 0,
-                right: 0,
-                child: AppBar(
-                  backgroundColor: Colors.black54.withOpacity(opacity),
-                  title: Text("${currentIndex + 1} / ${widget.photos.length}"),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () {
-                        Navigator.pop(context, currentIndex);
-                      },
-                    ),
-                  ],
-                ),
+          ),
+          if (showUI)
+            Positioned(
+              top: MediaQuery.of(context).padding.top,
+              left: 0,
+              right: 0,
+              child: AppBar(
+                backgroundColor: Colors.black54.withOpacity(opacity),
+                title: Text("${currentIndex + 1} / ${widget.photos.length}"),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      Navigator.pop(context, currentIndex);
+                    },
+                  ),
+                ],
               ),
-          ],
-        ),
+            ),
+          GestureDetector(
+            onTap: () => setState(() => showUI = !showUI),
+            onVerticalDragUpdate: _onVerticalDragUpdate,
+            onVerticalDragEnd: _onVerticalDragEnd,
+          ),
+        ],
       ),
     );
   }
