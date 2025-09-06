@@ -128,15 +128,17 @@ class _GalleryScreenState extends State<GalleryScreen> {
   double opacity = 1.0;
   double scale = 1.0;
 
-  // Для двойного тапа
-  double zoomScale = 1.0;
-  Offset zoomPosition = Offset.zero;
+  // Контроллеры для зума
+  late PhotoViewController _photoController;
+  late PhotoViewScaleStateController _scaleStateController;
 
   @override
   void initState() {
     super.initState();
     currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+    _photoController = PhotoViewController();
+    _scaleStateController = PhotoViewScaleStateController();
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details) {
@@ -160,13 +162,19 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   void _onDoubleTapDown(TapDownDetails details) {
-    zoomPosition = details.localPosition;
-  }
+    final position = details.localPosition;
+    final newScale = (_photoController.scale ?? 1.0) == 1.0 ? 2.0 : 1.0;
 
-  void _onDoubleTap() {
-    setState(() {
-      zoomScale = (zoomScale == 1.0) ? 2.0 : 1.0;
-    });
+    _photoController.scale = newScale;
+
+    if (newScale > 1.0) {
+      _photoController.position = Offset(
+        -(position.dx - MediaQuery.of(context).size.width / 2) * newScale,
+        -(position.dy - MediaQuery.of(context).size.height / 2) * newScale,
+      );
+    } else {
+      _photoController.position = Offset.zero;
+    }
   }
 
   @override
@@ -176,7 +184,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
       body: GestureDetector(
         onTap: () => setState(() => showUI = !showUI),
         onDoubleTapDown: _onDoubleTapDown,
-        onDoubleTap: _onDoubleTap,
         onVerticalDragUpdate: _onVerticalDragUpdate,
         onVerticalDragEnd: _onVerticalDragEnd,
         child: Stack(
@@ -186,31 +193,23 @@ class _GalleryScreenState extends State<GalleryScreen> {
               child: PhotoViewGallery.builder(
                 itemCount: widget.photos.length,
                 pageController: _pageController,
-                onPageChanged: (index) => setState(() => currentIndex = index),
+                onPageChanged: (index) {
+                  setState(() {
+                    currentIndex = index;
+                    _photoController = PhotoViewController();
+                    _scaleStateController = PhotoViewScaleStateController();
+                  });
+                },
                 builder: (context, index) {
-                  return PhotoViewGalleryPageOptions.customChild(
-                    child: Hero(
-                      tag: 'photo_$index',
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          final dx =
-                              (constraints.maxWidth / 2 - zoomPosition.dx) *
-                              (zoomScale - 1);
-                          final dy =
-                              (constraints.maxHeight / 2 - zoomPosition.dy) *
-                              (zoomScale - 1);
-
-                          return Transform(
-                            transform: Matrix4.identity()
-                              ..translate(dx, dy)
-                              ..scale(zoomScale),
-                            child: Image.file(widget.photos[index]),
-                          );
-                        },
-                      ),
-                    ),
+                  return PhotoViewGalleryPageOptions(
+                    imageProvider: FileImage(widget.photos[index]),
+                    controller: _photoController,
+                    scaleStateController: _scaleStateController,
                     minScale: PhotoViewComputedScale.contained,
                     maxScale: PhotoViewComputedScale.covered * 3,
+                    heroAttributes: PhotoViewHeroAttributes(
+                      tag: 'photo_$index',
+                    ),
                   );
                 },
                 backgroundDecoration: const BoxDecoration(
