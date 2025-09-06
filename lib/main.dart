@@ -234,30 +234,53 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _oldCodeController = TextEditingController();
+  final TextEditingController _newCodeController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
   String? _errorText;
+  String _currentCode = '12345';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentCode();
+  }
+
+  Future<void> _loadCurrentCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentCode = prefs.getString('secret_code') ?? '12345';
+    });
+  }
 
   Future<void> _saveCode() async {
-    final code = _codeController.text.trim();
+    final oldCode = _oldCodeController.text.trim();
+    final newCode = _newCodeController.text.trim();
     final confirm = _confirmController.text.trim();
 
-    if (code.isEmpty || confirm.isEmpty) {
+    if (oldCode.isEmpty || newCode.isEmpty || confirm.isEmpty) {
       setState(() {
-        _errorText = 'Поля не должны быть пустыми';
+        _errorText = 'Все поля должны быть заполнены';
       });
       return;
     }
 
-    if (code != confirm) {
+    if (oldCode != _currentCode) {
       setState(() {
-        _errorText = 'Коды не совпадают';
+        _errorText = 'Старый код введён неверно';
+      });
+      return;
+    }
+
+    if (newCode != confirm) {
+      setState(() {
+        _errorText = 'Новый код и подтверждение не совпадают';
       });
       return;
     }
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('secret_code', code);
+    await prefs.setString('secret_code', newCode);
 
     if (mounted) {
       Navigator.pop(context);
@@ -275,17 +298,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            const Text(
-              'Введите новый секретный код:',
-              style: TextStyle(fontSize: 18),
-            ),
+            const Text('Введите старый код:', style: TextStyle(fontSize: 18)),
             const SizedBox(height: 10),
             TextField(
-              controller: _codeController,
+              controller: _oldCodeController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Например: 12345',
+                hintText: 'Текущий код',
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text('Введите новый код:', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 10),
+            TextField(
+              controller: _newCodeController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                hintText: 'Новый код',
               ),
             ),
             const SizedBox(height: 20),
@@ -299,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                hintText: 'Повторите код',
+                hintText: 'Повторите новый код',
               ),
             ),
             if (_errorText != null) ...[
