@@ -15,6 +15,8 @@ class PhotoSafeScreen extends StatefulWidget {
 
 class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
   List<File> _photos = [];
+  bool _selectionMode = false;
+  Set<int> _selectedIndexes = {};
 
   @override
   void initState() {
@@ -67,6 +69,43 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
     });
   }
 
+  Future<void> _deleteSelected() async {
+    final prefs = await SharedPreferences.getInstance();
+    final paths = prefs.getStringList('photos') ?? [];
+
+    final toDelete = _selectedIndexes.toList()..sort((a, b) => b.compareTo(a));
+    for (var index in toDelete) {
+      if (await _photos[index].exists()) {
+        await _photos[index].delete();
+      }
+      paths.removeAt(index);
+      _photos.removeAt(index);
+    }
+
+    await prefs.setStringList('photos', paths);
+    setState(() {
+      _selectionMode = false;
+      _selectedIndexes.clear();
+    });
+  }
+
+  void _toggleSelectionMode([bool? enable]) {
+    setState(() {
+      _selectionMode = enable ?? !_selectionMode;
+      _selectedIndexes.clear();
+    });
+  }
+
+  void _toggleSelectAll() {
+    setState(() {
+      if (_selectedIndexes.length == _photos.length) {
+        _selectedIndexes.clear();
+      } else {
+        _selectedIndexes = Set.from(List.generate(_photos.length, (i) => i));
+      }
+    });
+  }
+
   void _openGallery(int initialIndex) async {
     final deletedIndex = await Navigator.push(
       context,
@@ -87,16 +126,31 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black.withValues(alpha: 0.3),
         elevation: 0,
-        title: const Text(
-          'Фото‑сейф',
-          style: TextStyle(fontWeight: FontWeight.w300, fontSize: 20),
+        title: Text(
+          _selectionMode ? "${_selectedIndexes.length} выбрано" : "Фото‑сейф",
+          style: const TextStyle(fontWeight: FontWeight.w300, fontSize: 20),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {},
-          ),
-        ],
+        actions: _selectionMode
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.select_all),
+                  onPressed: _toggleSelectAll,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: _selectedIndexes.isEmpty ? null : _deleteSelected,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => _toggleSelectionMode(false),
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.checklist),
+                  onPressed: () => _toggleSelectionMode(true),
+                ),
+              ],
       ),
       body: GridView.builder(
         padding: const EdgeInsets.all(8),
@@ -107,23 +161,52 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
         ),
         itemCount: _photos.length,
         itemBuilder: (context, index) {
+          final selected = _selectedIndexes.contains(index);
           return GestureDetector(
-            onTap: () => _openGallery(index),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Hero(
-                tag: 'photo_$index',
-                child: Image.file(_photos[index], fit: BoxFit.cover),
-              ),
+            onLongPress: () => _toggleSelectionMode(true),
+            onTap: () {
+              if (_selectionMode) {
+                setState(() {
+                  if (selected) {
+                    _selectedIndexes.remove(index);
+                  } else {
+                    _selectedIndexes.add(index);
+                  }
+                });
+              } else {
+                _openGallery(index);
+              }
+            },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(_photos[index], fit: BoxFit.cover),
+                ),
+                if (_selectionMode)
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Icon(
+                      selected
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      color: selected ? Colors.blue : Colors.white70,
+                    ),
+                  ),
+              ],
             ),
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white.withValues(alpha: 0.85),
-        child: const Icon(Icons.add, color: Colors.black),
-        onPressed: _addPhoto,
-      ),
+      floatingActionButton: !_selectionMode
+          ? FloatingActionButton(
+              backgroundColor: Colors.white.withValues(alpha: 0.85),
+              child: const Icon(Icons.add, color: Colors.black),
+              onPressed: _addPhoto,
+            )
+          : null,
     );
   }
 }
