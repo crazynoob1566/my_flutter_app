@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:math_expressions/math_expressions.dart';
-import 'photo_safe_screen.dart';
 
-void main() => runApp(const SecretCalculatorApp());
+void main() => runApp(const CalculatorApp());
 
-class SecretCalculatorApp extends StatelessWidget {
-  const SecretCalculatorApp({super.key});
+class CalculatorApp extends StatelessWidget {
+  const CalculatorApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Secret Calculator',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.teal),
+      theme: ThemeData.dark().copyWith(
+        scaffoldBackgroundColor: const Color(0xFF121212),
+      ),
       home: const CalculatorScreen(),
     );
   }
@@ -26,154 +25,137 @@ class CalculatorScreen extends StatefulWidget {
 }
 
 class _CalculatorScreenState extends State<CalculatorScreen> {
-  String input = '';
-  String result = '';
-  final String secretCode = '55555';
-
-  String _normalize(String expr) {
-    return expr.replaceAll('×', '*').replaceAll('÷', '/');
-  }
-
-  String _evaluate(String expr) {
-    try {
-      if (expr.isEmpty) return '';
-      final parsed = Parser().parse(_normalize(expr));
-      final value = parsed.evaluate(EvaluationType.REAL, ContextModel());
-      final isInt = (value - value.roundToDouble()).abs() < 1e-9;
-      return isInt ? value.toInt().toString() : value.toString();
-    } catch (_) {
-      return 'Ошибка';
-    }
-  }
+  String expression = '';
+  String result = '0';
 
   void _onButtonPressed(String value) {
     setState(() {
       if (value == 'AC') {
-        input = '';
-        result = '';
-        return;
-      }
-      if (value == 'DEL') {
-        if (input.isNotEmpty) input = input.substring(0, input.length - 1);
-        return;
-      }
-      if (value == '=') {
-        result = _evaluate(input);
-        return;
-      }
-
-      // защита от двух операторов подряд
-      final ops = ['+', '-', '×', '÷'];
-      if (ops.contains(value)) {
-        if (input.isEmpty) return;
-        if (ops.contains(input.characters.last)) {
-          input = input.substring(0, input.length - 1) + value;
-          return;
+        expression = '';
+        result = '0';
+      } else if (value == '=') {
+        // Здесь будет логика вычислений
+        try {
+          // Пример: просто выводим выражение как результат
+          result = expression;
+        } catch (e) {
+          result = 'Ошибка';
         }
-      }
-
-      input += value;
-
-      if (input.endsWith(secretCode)) {
-        input = '';
-        result = '';
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => PhotoSafeScreen()),
-        );
+      } else {
+        expression += value;
       }
     });
+  }
+
+  Widget _buildButton(
+    String text, {
+    Color? color,
+    Color? textColor,
+    double fontSize = 24,
+    int flex = 1,
+  }) {
+    return Expanded(
+      flex: flex,
+      child: GestureDetector(
+        onTap: () => _onButtonPressed(text),
+        child: Container(
+          margin: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color ?? Colors.grey[850],
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Center(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: fontSize,
+                color: textColor ?? Colors.white,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final buttons = [
-      '7', '8', '9', 'DEL',
-      '4', '5', '6', '×',
-      '1', '2', '3', '÷',
-      '0', '.', '=', 'AC',
-      '+', '-', // вынесем вниз, можно переставить как удобно
+      ['AC', '±', '%', '/'],
+      ['7', '8', '9', '×'],
+      ['4', '5', '6', '-'],
+      ['1', '2', '3', '+'],
+      ['0', '.', '='],
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Calculator')),
-      body: Column(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              alignment: Alignment.bottomRight,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(input, style: const TextStyle(fontSize: 32)),
-                  const SizedBox(height: 8),
-                  Text(
-                    result,
-                    style: const TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.bold,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Дисплей
+            Expanded(
+              flex: 2,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                alignment: Alignment.bottomRight,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      expression,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        color: Colors.white70,
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    Text(
+                      result,
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          GridView.builder(
-            padding: const EdgeInsets.all(8),
-            shrinkWrap: true,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              childAspectRatio: 1.15,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
+            // Кнопки
+            Expanded(
+              flex: 5,
+              child: Column(
+                children: buttons.map((row) {
+                  return Expanded(
+                    child: Row(
+                      children: row.map((btn) {
+                        final isOperator = [
+                          '/',
+                          '×',
+                          '-',
+                          '+',
+                          '=',
+                        ].contains(btn);
+                        final isSpecial = ['AC', '±', '%'].contains(btn);
+                        return _buildButton(
+                          btn,
+                          flex: btn == '0' ? 2 : 1,
+                          color: isOperator
+                              ? Colors.orange
+                              : isSpecial
+                              ? Colors.grey[700]
+                              : Colors.grey[850],
+                          textColor: Colors.white,
+                        );
+                      }).toList(),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-            itemCount: buttons.length,
-            itemBuilder: (context, index) {
-              final label = buttons[index];
-              final isOp = [
-                '+',
-                '-',
-                '×',
-                '÷',
-                '=',
-                'AC',
-                'DEL',
-              ].contains(label);
-              return ElevatedButton(
-                onPressed: () => _onButtonPressed(label),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: isOp ? Colors.teal : Colors.teal.shade50,
-                  foregroundColor: isOp ? Colors.white : Colors.black,
-                ),
-                child: Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class SecretScreen extends StatelessWidget {
-  const SecretScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Secret Area')),
-      body: const Center(
-        child: Text(
-          '🔒 Секретный раздел (сюда добавим биометрию)',
-          style: TextStyle(fontSize: 22),
+          ],
         ),
       ),
     );
