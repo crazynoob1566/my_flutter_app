@@ -14,7 +14,6 @@ class PhotoSafeScreen extends StatefulWidget {
 }
 
 class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
-  final GlobalKey<AnimatedGridState> _gridKey = GlobalKey<AnimatedGridState>();
   List<File> _photos = [];
 
   @override
@@ -48,10 +47,6 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
 
       setState(() {
         _photos.add(newImage);
-        _gridKey.currentState?.insertItem(
-          _photos.length - 1,
-          duration: const Duration(milliseconds: 300),
-        );
       });
     }
   }
@@ -67,13 +62,9 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
     paths.removeAt(index);
     await prefs.setStringList('photos', paths);
 
-    final removedPhoto = _photos.removeAt(index);
-    _gridKey.currentState?.removeItem(
-      index,
-      (context, animation) =>
-          _buildAnimatedItem(removedPhoto, index, animation),
-      duration: const Duration(milliseconds: 300),
-    );
+    setState(() {
+      _photos.removeAt(index);
+    });
   }
 
   void _openGallery(int initialIndex) async {
@@ -87,29 +78,6 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
     if (deletedIndex != null) {
       _deletePhoto(deletedIndex);
     }
-  }
-
-  Widget _buildAnimatedItem(
-    File photo,
-    int index,
-    Animation<double> animation,
-  ) {
-    return ScaleTransition(
-      scale: animation,
-      child: FadeTransition(
-        opacity: animation,
-        child: GestureDetector(
-          onTap: () => _openGallery(index),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Hero(
-              tag: 'photo_$index',
-              child: Image.file(photo, fit: BoxFit.cover),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
@@ -130,16 +98,25 @@ class _PhotoSafeScreenState extends State<PhotoSafeScreen> {
           ),
         ],
       ),
-      body: AnimatedGrid(
-        key: _gridKey,
-        initialItemCount: _photos.length,
+      body: GridView.builder(
+        padding: const EdgeInsets.all(8),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
           crossAxisSpacing: 4,
           mainAxisSpacing: 4,
         ),
-        itemBuilder: (context, index, animation) {
-          return _buildAnimatedItem(_photos[index], index, animation);
+        itemCount: _photos.length,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () => _openGallery(index),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Hero(
+                tag: 'photo_$index',
+                child: Image.file(_photos[index], fit: BoxFit.cover),
+              ),
+            ),
+          );
         },
       ),
       floatingActionButton: FloatingActionButton(
